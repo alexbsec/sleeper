@@ -2,8 +2,12 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <errno.h>
+
+#define PID_FILE "/tmp/sleeper_pid"
 
 void DisplayMenu() {
   printf("Select an option\n");
@@ -35,9 +39,40 @@ int CalculateSecondsUntil(int targetHour, int targetMinute) {
   return secondsUntil;
 }
 
+void TerminateExistingProcess() {
+  FILE *pidFile = fopen(PID_FILE, "r");
+  if (pidFile) {
+    pid_t existingPid;
+    if (fscanf(pidFile, "%d", &existingPid) == 1) {
+      if (kill(existingPid, 0) == 0) {
+        printf("Terminating existing sleeper process (PID: %d)...\n", existingPid);
+        kill(existingPid, SIGKILL);
+      } else if (errno != ESRCH) {
+        perror("Error checking existing process");
+      }
+    }
+
+    fclose(pidFile);
+    remove(PID_FILE);
+  }
+}
+
+void WritePidToFile(pid_t pid) {
+  umask(077); // Set file permissions to 600
+  FILE *pidFile = fopen(PID_FILE, "w");
+  if (!pidFile) {
+    perror("Failed to write PID file");
+    exit(EXIT_FAILURE);
+  }
+  fprintf(pidFile, "%d\n", pid);
+  fclose(pidFile);
+}
+
 int main() {
   int choice;
   int duration = 0;
+
+  TerminateExistingProcess();
 
   while (1) {
     DisplayMenu();
@@ -89,6 +124,7 @@ int main() {
       // Parent process continues and exits
       printf("Waiting for %d seconds before scheduling system sleep...\n",
              duration);
+      WritePidToFile(pid);
     } else {
       fprintf(stderr, "Failed to fork process.\n");
       exit(EXIT_FAILURE);
@@ -98,3 +134,4 @@ int main() {
 
   return EXIT_SUCCESS;
 }
+
