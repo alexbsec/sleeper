@@ -22,8 +22,6 @@ int CalculateSecondsUntil(int targetHour, int targetMinute) {
     int currentMinute = localTime->tm_min;
     int currentSecond = localTime->tm_sec;
 
-    printf("%d, %d", currentHour, currentMinute);
-
     int targetSeconds = targetHour * 3600 + targetMinute * 60;
     int currentSeconds = currentHour * 3600 + currentMinute * 60;
 
